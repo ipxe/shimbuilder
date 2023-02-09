@@ -1,0 +1,43 @@
+name: Build
+
+on:
+  push:
+  workflow_dispatch:
+
+env:
+  TAG: "${{ github.repository }}:\
+        ${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}"
+
+jobs:
+
+  build:
+    name: Build
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v3
+      - name: Build
+        run: |
+          sudo docker build -t "${TAG}" .
+      - name: Check out iPXE shim
+        uses: actions/checkout@v3
+        with:
+          repository: ipxe/shim
+          path: ipxeshim
+          submodules: true
+      - name: Test shim build
+        run: |
+          mkdir ipxeshim/build-{x64,aa64}
+          sudo docker run --rm -v $(pwd)/ipxeshim:/opt/ipxeshim "${TAG}" \
+               make -C /opt/ipxeshim/build-x64 -f /opt/ipxeshim/Makefile \
+               TOPDIR=/opt/ipxeshim
+          sudo docker run --rm -v $(pwd)/ipxeshim:/opt/ipxeshim "${TAG}" \
+               make -C /opt/ipxeshim/build-aa64 -f /opt/ipxeshim/Makefile \
+               TOPDIR=/opt/ipxeshim CROSS_COMPILE=aarch64-linux-gnu-
+          [ -s ipxeshim/build-x64/shimx64.efi ]
+          [ -s ipxeshim/build-aa64/shimaa64.efi ]
+      - name: Publish
+        run: |
+          sudo docker login -u "${{ vars.DOCKER_USERNAME }}" \
+                            -p "${{ secrets.DOCKER_PASSWORD }}"
+          sudo docker push "${TAG}"
