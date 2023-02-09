@@ -6,4 +6,5 @@ RUN dnf update -y \
         dos2unix \
         gcc \
         gcc-aarch64-linux-gnu \
+        git \
     && dnf clean all
