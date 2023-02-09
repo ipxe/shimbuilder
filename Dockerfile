@@ -7,4 +7,5 @@ RUN dnf update -y \
         gcc \
         gcc-aarch64-linux-gnu \
         git \
+        diffutils \
     && dnf clean all
